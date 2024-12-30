@@ -7,6 +7,8 @@ use serde::{Serialize, Deserialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct AnalyticsData {
+    user_agent: String,
+    timestamp: String,
     screen_width: u32,
     screen_height: u32,
     viewport_width: u32,
@@ -56,6 +58,7 @@ async fn main() {
 }
 
 async fn handle_request(data: AnalyticsData, tx: mpsc::Sender<AnalyticsData>) -> Result<impl warp::Reply, warp::Rejection> {
+    println!("{:?}", data);
     tx.send(data).await.unwrap();
     Ok(warp::reply())
 }
@@ -69,7 +72,9 @@ async fn flush_buffer(buffer: &[AnalyticsData]) {
 
     for entry in buffer {
         let record = format!(
-            "{},{},{},{},{},{},{},{}\n",
+            "{},{},{},{},{},{},{},{},{},{}\n",
+            entry.timestamp,
+            entry.user_agent,
             entry.screen_width,
             entry.screen_height,
             entry.viewport_width,

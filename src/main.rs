@@ -54,8 +54,8 @@ async fn main() {
 
     warp::serve(analytics_route)
         .tls()
-        .cert_path("/etc/letsencrypt/live/linode.jsn.vet/fullchain.pem")
-        .key_path("/etc/letsencrypt/live/linode.jsn.vet/privkey.pem")
+        .cert_path("/etc/letsencrypt/live/logging.jsn.vet/fullchain.pem")
+        .key_path("/etc/letsencrypt/live/logging.jsn.vet/privkey.pem")
         .run(([0, 0, 0, 0], 5000))
         .await;
 

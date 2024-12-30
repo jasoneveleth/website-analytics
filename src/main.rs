@@ -1,5 +1,6 @@
 use tokio::sync::mpsc;
 use warp::Filter;
+use warp::cors::Cors;
 use tokio::time::{sleep, Duration};
 use std::{fs::OpenOptions, io::Write};
 use chrono::Utc;
@@ -40,11 +41,17 @@ async fn main() {
         }
     });
 
+    let cors = warp::cors()
+        .allow_any_origin() // You can restrict this to a specific domain for better security
+        .allow_methods(vec!["POST"])
+        .allow_headers(vec!["Content-Type"]);
+
     let analytics_route = warp::post()
         .and(warp::path("analytics"))
         .and(warp::body::json())
         .and(warp::any().map(move || tx.clone()))
-        .and_then(handle_request);
+        .and_then(handle_request)
+        .with(cors);
 
     warp::serve(analytics_route)
         .tls()

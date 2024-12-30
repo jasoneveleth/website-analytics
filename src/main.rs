@@ -23,14 +23,14 @@ struct AnalyticsData {
 async fn main() {
     let (tx, mut rx) = mpsc::channel::<AnalyticsData>(1024);
 
-    // Buffer channel output and flush every 512
+    let capacity = 4;
     tokio::spawn(async move {
-        let mut buffer = Vec::new();
+        let mut buffer = Vec::with_capacity(capacity);
         loop {
             match rx.recv().await {
                 Some(data) => {
                     buffer.push(data);
-                    if buffer.len() >= 512 {
+                    if buffer.len() >= capacity {
                         flush_buffer(&buffer).await;
                         buffer.clear();
                     }
@@ -78,9 +78,9 @@ async fn flush_buffer(buffer: &[AnalyticsData]) {
 
     for entry in buffer {
         let record = format!(
-            "{},{},{},{},{},{},{},{},{},{}\n",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             entry.timestamp,
-            entry.user_agent,
+            entry.user_agent.replace("\t", " "),
             entry.screen_width,
             entry.screen_height,
             entry.viewport_width,

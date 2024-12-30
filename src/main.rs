@@ -1,6 +1,5 @@
 use tokio::sync::mpsc;
 use warp::Filter;
-use warp::cors::Cors;
 use tokio::time::{sleep, Duration};
 use std::{fs::OpenOptions, io::Write};
 use chrono::Utc;

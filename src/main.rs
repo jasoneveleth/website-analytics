@@ -32,19 +32,21 @@ async fn main() {
                 _ = sleep(timeout_dur) => None,
                 data = rx.recv() => Some(data),
             };
-            if let Some(Some(data)) = res {
-                buffer.push(data);
-                if buffer.len() >= capacity {
-                    flush_buffer(&buffer).await;
-                    buffer.clear();
-                }
-            } else if let None = res {
-                if !buffer.is_empty() {
-                    flush_buffer(&buffer).await;
-                    buffer.clear();
-                }
-            } else { // Some(None) case
-                break;
+
+            match res {
+                Some(Some(data)) => { // got data
+                    buffer.push(data);
+                    if buffer.len() >= capacity {
+                        flush_buffer(&mut buffer).await;
+                    }
+                },
+                Some(None) => { // channel closed
+                    flush_buffer(&mut buffer).await;
+                    break;
+                },
+                None => { // timeout
+                    flush_buffer(&mut buffer).await;
+                },
             }
         }
     });
@@ -73,19 +75,22 @@ async fn main() {
 }
 
 async fn handle_request(data: AnalyticsData, tx: mpsc::Sender<AnalyticsData>) -> Result<impl warp::Reply, warp::Rejection> {
-    println!("{:?}", data);
     tx.send(data).await.unwrap();
     Ok(warp::reply())
 }
 
-async fn flush_buffer(buffer: &[AnalyticsData]) {
+async fn flush_buffer(buffer: &mut Vec<AnalyticsData>) {
+    if buffer.is_empty() {
+        return;
+    }
+
     let mut file = OpenOptions::new()
         .append(true)
         .create(true)
         .open(format!("logs/temp_{}.csv", Utc::now().format("%Y-%m-%d")))
         .unwrap();
 
-    for entry in buffer {
+    for entry in buffer.iter() {
         let record = format!(
             "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             entry.timestamp,
@@ -101,4 +106,5 @@ async fn flush_buffer(buffer: &[AnalyticsData]) {
         );
         file.write_all(record.as_bytes()).unwrap();
     }
+    buffer.clear();
 }

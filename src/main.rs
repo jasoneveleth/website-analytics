@@ -1,9 +1,11 @@
 use tokio::sync::mpsc;
+use warp::Filter;
 use tokio::time::{sleep, Duration};
 use std::{fs::OpenOptions, io::Write};
 use chrono::Utc;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct AnalyticsData {
     screen_width: u32,
     screen_height: u32,
@@ -17,7 +19,7 @@ struct AnalyticsData {
 
 #[tokio::main]
 async fn main() {
-    let (tx, rx) = mpsc::channel::<AnalyticsData>(1024);
+    let (tx, mut rx) = mpsc::channel::<AnalyticsData>(1024);
 
     // Buffer channel output and flush every 512
     tokio::spawn(async move {
@@ -55,7 +57,7 @@ async fn main() {
 
 async fn handle_request(data: AnalyticsData, tx: mpsc::Sender<AnalyticsData>) -> Result<impl warp::Reply, warp::Rejection> {
     tx.send(data).await.unwrap();
-    warp::reply::with_status("Accepted", warp::http::StatusCode::ACCEPTED)
+    Ok(warp::reply())
 }
 
 async fn flush_buffer(buffer: &[AnalyticsData]) {

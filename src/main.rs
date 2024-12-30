@@ -23,25 +23,34 @@ struct AnalyticsData {
 async fn main() {
     let (tx, mut rx) = mpsc::channel::<AnalyticsData>(1024);
 
-    let capacity = 4;
+    let capacity = 128;
+    let timeout_dur = Duration::from_secs(5);
     tokio::spawn(async move {
         let mut buffer = Vec::with_capacity(capacity);
         loop {
-            match rx.recv().await {
-                Some(data) => {
-                    buffer.push(data);
-                    if buffer.len() >= capacity {
-                        flush_buffer(&buffer).await;
-                        buffer.clear();
-                    }
+            let res = tokio::select! {
+                _ = sleep(timeout_dur) => None,
+                data = rx.recv() => Some(data),
+            };
+            if let Some(Some(data)) = res {
+                buffer.push(data);
+                if buffer.len() >= capacity {
+                    flush_buffer(&buffer).await;
+                    buffer.clear();
                 }
-                None => break, // End when channel is closed
+            } else if let None = res {
+                if !buffer.is_empty() {
+                    flush_buffer(&buffer).await;
+                    buffer.clear();
+                }
+            } else { // Some(None) case
+                break;
             }
         }
     });
 
     let cors = warp::cors()
-        .allow_any_origin() // You can restrict this to a specific domain for better security
+        .allow_any_origin()
         .allow_methods(vec!["POST"])
         .allow_headers(vec!["Content-Type"]);
 

@@ -1,6 +1,6 @@
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
-use std::{sync::Arc, fs::OpenOptions, io::Write};
+use std::{fs::OpenOptions, io::Write};
 use chrono::Utc;
 
 #[derive(Debug, Clone)]

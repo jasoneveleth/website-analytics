@@ -17,6 +17,7 @@ struct AnalyticsData {
     timezone_offset: i32,
     referrer: String,
     page: String,
+    #[serde(default)]
     ip_address: String,
 }
 
@@ -80,7 +81,7 @@ async fn handle_request(mut data: AnalyticsData, remote_addr: Option<std::net::S
     if let Some(addr) = remote_addr {
         data.ip_address = addr.ip().to_string();
     } else {
-        data.ip_address = "unknown".to_string();
+        data.ip_address = "".to_string();
     }
     tx.send(data).await.unwrap();
     Ok(warp::reply())

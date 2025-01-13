@@ -17,6 +17,7 @@ struct AnalyticsData {
     timezone_offset: i32,
     referrer: String,
     page: String,
+    ip_address: String,
 }
 
 #[tokio::main]
@@ -59,6 +60,7 @@ async fn main() {
     let analytics_route = warp::post()
         .and(warp::path("analytics"))
         .and(warp::body::json())
+        .and(warp::filters::addr::remote())
         .and(warp::any().map(move || tx.clone()))
         .and_then(handle_request)
         .with(cors);
@@ -74,7 +76,12 @@ async fn main() {
     sleep(Duration::from_secs(10)).await;
 }
 
-async fn handle_request(data: AnalyticsData, tx: mpsc::Sender<AnalyticsData>) -> Result<impl warp::Reply, warp::Rejection> {
+async fn handle_request(mut data: AnalyticsData, remote_addr: Option<std::net::SocketAddr>, tx: mpsc::Sender<AnalyticsData>) -> Result<impl warp::Reply, warp::Rejection> {
+    if let Some(addr) = remote_addr {
+        data.ip_address = addr.ip().to_string();
+    } else {
+        data.ip_address = "unknown".to_string();
+    }
     tx.send(data).await.unwrap();
     Ok(warp::reply())
 }
@@ -92,7 +99,7 @@ async fn flush_buffer(buffer: &mut Vec<AnalyticsData>) {
 
     for entry in buffer.iter() {
         let record = format!(
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n",
             entry.timestamp,
             entry.user_agent.replace("\t", " "),
             entry.screen_width,
@@ -102,7 +109,8 @@ async fn flush_buffer(buffer: &mut Vec<AnalyticsData>) {
             entry.language,
             entry.timezone_offset,
             entry.referrer,
-            entry.page
+            entry.page,
+            entry.ip_address,
         );
         file.write_all(record.as_bytes()).unwrap();
     }
